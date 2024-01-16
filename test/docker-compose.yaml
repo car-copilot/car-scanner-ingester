@@ -4,7 +4,7 @@ services:
     image: influxdb:2.7
     container_name: influx
     ports:
-      - "8086:8086"
+      - "8087:8086"
     volumes:
       - influxdb:/var/lib/influxdb
     environment:
@@ -15,7 +15,7 @@ services:
       - INFLUXDB_USER=audi_a4
       - INFLUXDB_USER_PASSWORD=secretpassword
   grafana:
-    image: grafana/grafana-enterprise
+    image: grafana/grafana
     container_name: grafana
     ports:
      - '3000:3000'
@@ -25,3 +25,8 @@ services:
 volumes:
   influxdb:
   grafana:
+
+networks:
+  default:
+    external:
+      name: obd2influx_default
