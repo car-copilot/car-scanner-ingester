@@ -238,7 +238,7 @@ func main() {
 				if err != nil {
 					log.Fatal().Err(err)
 				}
-				raw_points, endDate := obd2influx.ReadCsv(path.Join(vehicle.Path, file.Name()), date, mergedPids, mergedIgnorePids)
+				raw_points, endDate := obd2influx.ReadCsv(path.Join(vehicle.Path, file.Name()), date, mergedPids, mergedIgnorePids, vehicle.Convert)
 
 				log.Info().Msgf("Registering trip in database")
 				bucket := registerTrip(vehicle, owner, date, endDate)
@@ -280,7 +280,7 @@ func main() {
 						deleteAPI.Delete(context.Background(), orgObj, bucketObj, date, endDate, "_measurement=\"*\"")
 						writeAPI := client.WriteAPIBlocking(org, bucket)
 						log.Info().Msgf("Writing %d points to InfluxDB", len(points))
-						log.Info().Msgf("Data available at https://obito1903.grafana.net/d/edmyb3fp6zocge/car-scanner?orgId=1&var-car=%s&from=%d&to=%d&refresh=10s", bucket, date.UnixMilli(), endDate.UnixMilli())
+						log.Info().Msgf("Data available at https://car-grafana.obito.fr/d/edmyb3fp6zocge/car-scanner?orgId=1&var-car=%s&from=%d&to=%d&refresh=10s", bucket, date.UnixMilli(), endDate.UnixMilli())
 						for i, point := range influxPoints {
 							progess := (float64(i) / float64(len(influxPoints))) * 100
 							_, dec := math.Modf(progess)

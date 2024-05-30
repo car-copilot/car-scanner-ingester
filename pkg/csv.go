@@ -7,7 +7,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/bcicen/go-units"
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
+	"github.com/rs/zerolog/log"
 )
 
 func unitConversion(unit string, value float64) (newUnit string, newValue float64) {
@@ -56,7 +58,7 @@ func contains(slice []string, element string) bool {
 	return false
 }
 
-func recordToCarDatapoint(record []string, start_time time.Time, offset *float64, mapping map[string]string, ignorePids []string) (CarDataPoint, error) {
+func recordToCarDatapoint(record []string, start_time time.Time, offset *float64, mapping map[string]string, ignorePids []string, convert map[string]Convetion) (CarDataPoint, error) {
 	value, err := strconv.ParseFloat(record[2], 64)
 	if err != nil {
 		panic(err)
@@ -86,6 +88,22 @@ func recordToCarDatapoint(record []string, start_time time.Time, offset *float64
 
 	if ok := contains(ignorePids, pid); ok {
 		return CarDataPoint{}, fmt.Errorf("ignoring PID %s", pid)
+	}
+
+	if conv, ok := convert[pid]; ok {
+		from, err := units.Find(conv.From)
+		if err != nil {
+			return CarDataPoint{}, fmt.Errorf("error finding unit %s", conv.From)
+		}
+		to, err := units.Find(conv.To)
+		if err != nil {
+			return CarDataPoint{}, fmt.Errorf("error finding unit %s", conv.To)
+		}
+		valueRes, err := units.ConvertFloat(value, from, to)
+		value = valueRes.Float()
+		if err != nil {
+			return CarDataPoint{}, fmt.Errorf("error converting value %f from %s to %s", value, conv.From, conv.To)
+		}
 	}
 
 	if mapped, ok := mapping[pid]; ok {
@@ -124,7 +142,7 @@ func GroupDataPoint(data []CarDataPoint, group_size time.Duration) []CarDataPoin
 	return flat
 }
 
-func ReadCsv(path string, date time.Time, mapping map[string]string, ignorePids []string) ([]CarDataPoint, time.Time) {
+func ReadCsv(path string, date time.Time, mapping map[string]string, ignorePids []string, convert map[string]Convetion) ([]CarDataPoint, time.Time) {
 	out := []CarDataPoint{}
 	end := date
 	file, err := os.Open(path)
@@ -145,8 +163,9 @@ func ReadCsv(path string, date time.Time, mapping map[string]string, ignorePids 
 
 	records = records[1:] // remove head
 	for _, record := range records {
-		point, err := recordToCarDatapoint(record, start, &second_offset, mapping, ignorePids)
+		point, err := recordToCarDatapoint(record, start, &second_offset, mapping, ignorePids, convert)
 		if err != nil {
+			log.Warn().Err(err)
 			continue
 		}
 		// update end date

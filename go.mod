@@ -3,7 +3,10 @@ module github.com/Obito1903/obd2influx
 go 1.20
 
 require (
+	github.com/Knetic/govaluate v3.0.0+incompatible // indirect
 	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
+	github.com/bcicen/bfstree v1.0.0 // indirect
+	github.com/bcicen/go-units v1.0.5 // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.0.0-alpha.1 // indirect
 	github.com/google/uuid v1.3.1 // indirect
