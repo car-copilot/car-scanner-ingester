@@ -10,31 +10,68 @@ import (
 	"github.com/influxdata/influxdb-client-go/v2/api/write"
 )
 
-type CarDataPoint struct {
-	time  time.Time
-	pid   string
-	value float64
-	unit  string
+func unitConversion(unit string, value float64) (newUnit string, newValue float64) {
+	switch unit {
+	case "bar":
+		newUnit = "hPa"
+		newValue = value * 100
+	default:
+		newUnit = unit
+		newValue = value
+	}
+
+	return
 }
 
-func (p *CarDataPoint) ToInfluxPoint() *write.Point {
+type CarDataPoint struct {
+	Time      time.Time
+	Pid       string
+	Value     float64
+	Unit      string
+	Latitude  float64
+	Longitude float64
+}
+
+func (p CarDataPoint) ToInfluxPoint() *write.Point {
 	return write.NewPoint(
-		p.pid,
+		p.Pid,
 		map[string]string{
-			"unit": p.unit,
+			"unit": p.Unit,
 		},
 		map[string]interface{}{
-			"value": p.value,
+			"value": p.Value,
+			"lat":   p.Latitude,
+			"lon":   p.Longitude,
 		},
-		p.time,
+		p.Time,
 	)
 }
 
-func recordToCarDatapoint(record []string, start_time time.Time, offset *float64) CarDataPoint {
+func contains(slice []string, element string) bool {
+	for _, e := range slice {
+		if e == element {
+			return true
+		}
+	}
+	return false
+}
+
+func recordToCarDatapoint(record []string, start_time time.Time, offset *float64, mapping map[string]string, ignorePids []string) (CarDataPoint, error) {
 	value, err := strconv.ParseFloat(record[2], 64)
 	if err != nil {
 		panic(err)
 	}
+
+	latitute, err := strconv.ParseFloat(record[4], 64)
+	if err != nil {
+		latitute = 0.0
+	}
+
+	longitude, err := strconv.ParseFloat(record[5], 64)
+	if err != nil {
+		longitude = 0.0
+	}
+
 	seconds, err := strconv.ParseFloat(record[0], 64)
 	if err != nil {
 		panic(err)
@@ -44,21 +81,59 @@ func recordToCarDatapoint(record []string, start_time time.Time, offset *float64
 	} else {
 		*offset = seconds
 	}
-	return CarDataPoint{
-		time:  start_time,
-		pid:   record[1],
-		value: value,
-		unit:  record[3],
+
+	pid := record[1]
+
+	if ok := contains(ignorePids, pid); ok {
+		return CarDataPoint{}, fmt.Errorf("ignoring PID %s", pid)
 	}
+
+	if mapped, ok := mapping[pid]; ok {
+		pid = mapped
+	}
+
+	unit, value := unitConversion(record[3], value)
+
+	return CarDataPoint{
+		Time:      start_time,
+		Pid:       pid,
+		Value:     value,
+		Unit:      unit,
+		Latitude:  latitute,
+		Longitude: longitude,
+	}, nil
 }
 
-func ReadCsv(path string) []*write.Point {
-	out := []*write.Point{}
+func GroupDataPoint(data []CarDataPoint, group_size time.Duration) []CarDataPoint {
+	groups := make(map[time.Time]map[string]CarDataPoint)
+	for _, point := range data {
+		group_time := point.Time.Truncate(group_size)
+		if _, ok := groups[group_time]; !ok {
+			groups[group_time] = map[string]CarDataPoint{}
+		}
+		point.Time = group_time
+		groups[group_time][point.Pid] = point
+	}
+
+	flat := []CarDataPoint{}
+	for _, group := range groups {
+		for _, point := range group {
+			flat = append(flat, point)
+		}
+	}
+	return flat
+}
+
+func ReadCsv(path string, date time.Time, mapping map[string]string, ignorePids []string) ([]CarDataPoint, time.Time) {
+	out := []CarDataPoint{}
+	end := date
 	file, err := os.Open(path)
+
 	if err != nil {
 		panic(err)
 	}
-	start := time.Now()
+
+	start := date
 	second_offset := 0.0
 	r := csv.NewReader(file)
 	r.Comma = ';'
@@ -67,11 +142,20 @@ func ReadCsv(path string) []*write.Point {
 	if err != nil {
 		panic(err)
 	}
+
 	records = records[1:] // remove head
 	for _, record := range records {
-		point := recordToCarDatapoint(record, start, &second_offset)
-		out = append(out, point.ToInfluxPoint())
-		fmt.Print(point)
+		point, err := recordToCarDatapoint(record, start, &second_offset, mapping, ignorePids)
+		if err != nil {
+			continue
+		}
+		// update end date
+		if point.Time.After(end) {
+			end = point.Time
+		}
+
+		out = append(out, point)
+		// fmt.Print(point)
 	}
-	return out
+	return out, end
 }
