@@ -3,7 +3,7 @@ package obd2influx
 import (
 	"encoding/csv"
 	"fmt"
-	"os"
+	"io"
 	"strconv"
 	"time"
 
@@ -142,18 +142,13 @@ func GroupDataPoint(data []CarDataPoint, group_size time.Duration) []CarDataPoin
 	return flat
 }
 
-func ReadCsv(path string, date time.Time, mapping map[string]string, ignorePids []string, convert map[string]Convetion) ([]CarDataPoint, time.Time) {
+func ReadCsv(data io.Reader, date time.Time, mapping map[string]string, ignorePids []string, convert map[string]Convetion) ([]CarDataPoint, time.Time) {
 	out := []CarDataPoint{}
 	end := date
-	file, err := os.Open(path)
-
-	if err != nil {
-		panic(err)
-	}
 
 	start := date
 	second_offset := 0.0
-	r := csv.NewReader(file)
+	r := csv.NewReader(data)
 	r.Comma = ';'
 
 	records, err := r.ReadAll()
@@ -176,5 +171,33 @@ func ReadCsv(path string, date time.Time, mapping map[string]string, ignorePids 
 		out = append(out, point)
 		// fmt.Print(point)
 	}
+
+	// max time interval
+	var previous CarDataPoint
+	var current CarDataPoint
+	var interval time.Duration
+	for _, point := range out {
+		if point.Pid == "Vehicle speed" {
+			if previous == (CarDataPoint{}) {
+				previous = point
+			} else {
+				current = point
+				if interval == 0 {
+					log.Debug().Msgf("First time interval between %s and %s:  %s", current.Time, previous.Time, current.Time.Sub(previous.Time).Abs())
+					interval = current.Time.Sub(previous.Time).Abs()
+				} else {
+					if current.Time.Sub(previous.Time).Abs() > interval {
+						log.Debug().Msgf("New max time interval: %s", current.Time.Sub(previous.Time).Abs())
+						interval = current.Time.Sub(previous.Time).Abs()
+					}
+				}
+				previous = current
+			}
+
+		}
+	}
+
+	log.Info().Msgf("Max time interval: %s", interval)
+
 	return out, end
 }
