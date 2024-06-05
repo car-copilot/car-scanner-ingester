@@ -7,7 +7,7 @@ Small tool to export Car Scanner data to InfluxDB
 Place CSV in `test/<owner>/<brand> - <model> - <engin> (<year>)`
 
 ```bash
-go run main.go
+go run main.go -server=true -dry-run=true
 ```
 
 ## Todo
