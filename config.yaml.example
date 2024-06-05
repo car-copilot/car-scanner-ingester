@@ -1,0 +1,63 @@
+influxdb:
+  url: "https://influx.example.com/"
+  org: "car-copilot"
+  token: ""
+
+pg:
+  connection: host=<host> user=car-copilot dbname=car-copilot sslmode=disable password=<password>
+
+file: test/Samuel/Audi - A4 B8 - 2.0 TDI (2009)/2024-05-31 21-20-05.csv
+owner: Samuel
+vehicle: Audi - A4 B8 - 2.0 TDI (2009)
+
+path: "test"
+
+vehicles:
+  - brand: Audi
+    model: A4 B8
+    year: 2009
+    engine: 2.0 TDI
+    interval: 5s
+    ingorePids:
+      - "Vehicle Acceleration"
+      - "Engine Oil Temperature"
+    pidMap:
+      "[ECM] Engine oil temperature": "Engine oil temperature"
+      "[ECM] Instant fuel flow": "Instant fuel flow"
+      "[ECM] Gear engaged": "Gear engaged"
+      "[ECM] Boost pressure actual": "Boost pressure actual"
+      "[ECM] Boost pressure commanded": "Boost pressure commanded"
+      "[ECM] Acceleration": "Vehicle acceleration"
+      "[ECM] Brake pressure": "Brake pressure"
+
+  - brand: Ford
+    model: Fiesta
+    year: 2019
+    engine: 1.0 Ecoboost
+    interval: 2s
+    pidMap:
+      "Fuel level input (V)": "Fuel level"
+      "Calculated instant fuel rate": "Instant fuel flow"
+      "Calculated boost": "Boost pressure actual"
+    convert:
+      "Calculated boost":
+        from: "bar"
+        to: "kPa"
+
+ignorePids:
+  - "Engine RPM x1000"
+  - "Fuel used price"
+  - "Speed (GPS)"
+  - "Fuel used (total)"
+  - "Fuel used price (total)"
+  - "Fuel level input (%)"
+  - "Distance travelled (total)"
+  - "Average fuel consumption (total)"
+  - "Average speed (GPS)"
+  - "Average speed"
+
+pidMap:
+  "Altitude (GPS)": "Altitude"
+  "Instant engine power (based on fuel consumption)": "Instant engine power"
+  "Instant engine torque (based on fuel consumption)": "Instant engine torque"
+  "Calculated instant fuel consumption": "Instant fuel consumption"
