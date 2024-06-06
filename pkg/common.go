@@ -10,6 +10,7 @@ import (
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/knadh/koanf/parsers/yaml"
+	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
 	"github.com/knadh/koanf/v2"
 	"github.com/rs/zerolog/log"
@@ -64,6 +65,11 @@ func InitWithConfigFile(path string) {
 		log.Fatal().Err(err)
 	}
 
+	K.Load(env.Provider("CSI_", ".", func(s string) string {
+		return strings.Replace(strings.ToLower(
+			strings.TrimPrefix(s, "CSI_")), "_", ".", -1)
+	}), nil)
+
 	if err := K.Unmarshal("influxdb", &Config.Influx); err != nil {
 		log.Fatal().Err(err)
 	}
@@ -94,7 +100,7 @@ func FindBestVehicleMatch(search string) (Vehicle, error) {
 	matches := VehicleRegex.FindStringSubmatch(search)
 	if matches == nil {
 		log.Warn().Msgf("No match found for %s", search)
-		return Vehicle{}, fmt.Errorf("No match found for %s", search)
+		return Vehicle{}, fmt.Errorf("no match found for %s", search)
 	}
 	// Parse year
 	year, err := strconv.Atoi(matches[6])
@@ -115,7 +121,7 @@ func FindBestVehicleMatch(search string) (Vehicle, error) {
 			return vehicle, nil
 		}
 	}
-	return searchVehicle, fmt.Errorf("No match found for %s", search)
+	return searchVehicle, fmt.Errorf("no match found for %s", search)
 }
 
 func Contains(slice []string, element string) bool {
