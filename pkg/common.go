@@ -2,7 +2,10 @@ package obd2influx
 
 import (
 	"database/sql"
+	"fmt"
 	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	influxdb2 "github.com/influxdata/influxdb-client-go/v2"
@@ -28,6 +31,10 @@ type ConfigStruct struct {
 		Org   string `koanf:"org"`
 	} `koanf:"influxdb"`
 	Vehicles Vehicles `koanf:"vehicles"`
+	Http     struct {
+		Host string `koanf:"host"`
+		Port int64  `koanf:"port"`
+	} `koanf:"http"`
 }
 
 type Convetion struct {
@@ -69,6 +76,10 @@ func InitWithConfigFile(path string) {
 	Config.Owners = make(map[string]Vehicles, 0)
 	Config.Vehicles = make(Vehicles, 0)
 
+	if err := K.Unmarshal("http", &Config.Http); err != nil {
+		log.Fatal().Err(err)
+	}
+
 	if err := K.Unmarshal("vehicles", &Config.Vehicles); err != nil {
 		log.Fatal().Err(err)
 	}
@@ -78,15 +89,33 @@ func Init() {
 	InitWithConfigFile("config.yaml")
 }
 
-func FindBestVehicleMatch(vehicles Vehicles, search Vehicle) Vehicle {
+func FindBestVehicleMatch(search string) (Vehicle, error) {
 
-	for _, vehicle := range vehicles {
-		if search.Brand == vehicle.Brand && search.Model == vehicle.Model && search.Engine == vehicle.Engine && search.Year == vehicle.Year {
-			vehicle.Path = search.Path
-			return vehicle
+	matches := VehicleRegex.FindStringSubmatch(search)
+	if matches == nil {
+		log.Warn().Msgf("No match found for %s", search)
+		return Vehicle{}, fmt.Errorf("No match found for %s", search)
+	}
+	// Parse year
+	year, err := strconv.Atoi(matches[6])
+	if err != nil {
+		log.Warn().Err(err)
+	}
+
+	searchVehicle := Vehicle{
+		Brand:  strings.TrimSpace(matches[1]),
+		Model:  strings.TrimSpace(matches[2]),
+		Engine: strings.TrimSpace(matches[4]),
+		Year:   year,
+	}
+
+	for _, vehicle := range Config.Vehicles {
+		if searchVehicle.Brand == vehicle.Brand && searchVehicle.Model == vehicle.Model && searchVehicle.Engine == vehicle.Engine && searchVehicle.Year == vehicle.Year {
+			vehicle.Path = searchVehicle.Path
+			return vehicle, nil
 		}
 	}
-	return search
+	return searchVehicle, fmt.Errorf("No match found for %s", search)
 }
 
 func Contains(slice []string, element string) bool {
@@ -118,4 +147,14 @@ func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 		merged[key] = value
 	}
 	return merged
+}
+
+func MergeVehicleConfigs() {
+	for _, vehicle := range Config.Vehicles {
+		mergedPids := MergeMaps(K.MustStringMap("pidMap"), vehicle.PidMap)
+		mergedIgnorePids := MergeSlicesUnique(K.MustStrings("ignorePids"), vehicle.IgnorePids)
+
+		vehicle.PidMap = mergedPids
+		vehicle.IgnorePids = mergedIgnorePids
+	}
 }

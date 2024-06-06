@@ -16,14 +16,31 @@ func ConnectPg() {
 	}
 }
 
+func getOwnerFromMail(mail string) (string, error) {
+	var owner string
+	err := db.QueryRow("SELECT name FROM owners WHERE mail = $1", mail).Scan(&owner)
+	if err != nil {
+		log.Err(err).Send()
+		return "", err
+	}
+	if *Config.DryRun {
+		log.Info().Msgf("Owner %s found", owner)
+	}
+	return owner, nil
+}
+
 func registerTrip(vehicle Vehicle, owner string, start time.Time, end time.Time) string {
 	// Check if user exists
 	var userId int
-	var bucket string
+	bucket := strings.ToLower(owner)
+	if *Config.DryRun {
+		log.Info().Msgf("Dry run, not registering trip, bucket: %s", bucket)
+		return bucket
+	}
+
 	err := db.QueryRow("SELECT owner_id, bucket FROM owners WHERE name = $1", owner).Scan(&userId, &bucket)
 	if err != nil {
 		log.Err(err).Send()
-		bucket = strings.ToLower(owner)
 		log.Info().Msgf("Owner %s notfound", owner)
 		log.Info().Msgf("Creating owner %s with bucket %s", owner, bucket)
 		// Create user
