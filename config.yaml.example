@@ -10,10 +10,6 @@ http:
   host: 0.0.0.0
   port: 8080
 
-file: test/Samuel/Audi - A4 B8 - 2.0 TDI (2009)/2024-05-31 21-20-05.csv
-owner: Samuel
-vehicle: Audi - A4 B8 - 2.0 TDI (2009)
-
 path: "test"
 
 vehicles:

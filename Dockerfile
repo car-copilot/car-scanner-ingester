@@ -13,6 +13,9 @@ FROM alpine:3
 WORKDIR /app
 
 COPY --from=build /build/server /app/server
+
+COPY config.yaml.example /app/config.yaml
+
 RUN chmod +x /app/server
 
 EXPOSE 8080
