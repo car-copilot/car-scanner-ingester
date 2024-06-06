@@ -3,8 +3,6 @@ package obd2influx
 import (
 	"os"
 	"path"
-	"strconv"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -36,29 +34,12 @@ func ProcessFolders() {
 				log.Warn().Msgf("Skipping %s, not a directory", file.Name())
 				continue
 			}
-			// Parse vehicle from folder name
-			matches := VehicleRegex.FindStringSubmatch(file.Name())
-			if matches == nil {
-				log.Warn().Msgf("Skipping %s, not a valid folder name", file.Name())
-				continue
-			}
-			// Parse year
-			year, err := strconv.Atoi(matches[6])
+
+			vehicle, err := FindBestVehicleMatch(file.Name())
 			if err != nil {
-				log.Warn().Err(err)
+				log.Error().Err(err).Msgf("Failed to find best vehicle match.")
+				return
 			}
-
-			vehicle := Vehicle{
-				Brand:  strings.TrimSpace(matches[1]),
-				Model:  strings.TrimSpace(matches[2]),
-				Engine: strings.TrimSpace(matches[4]),
-				Year:   year,
-				Path:   path.Join(K.String("path"), folder.Name(), file.Name()),
-			}
-
-			log.Debug().Msgf("Found vehicle %s %s %d %s for %s in %s", vehicle.Brand, vehicle.Model, vehicle.Year, vehicle.Engine, owner, vehicle.Path)
-
-			vehicle = FindBestVehicleMatch(Config.Vehicles, vehicle)
 
 			Config.Owners[owner] = append(Config.Owners[owner], vehicle)
 		}

@@ -173,6 +173,11 @@ func ReadCsv(data io.Reader, date time.Time, mapping map[string]string, ignorePi
 	}
 
 	// max time interval
+
+	return out, end
+}
+
+func findMaxTimeInterval(out []CarDataPoint) time.Duration {
 	var previous CarDataPoint
 	var current CarDataPoint
 	var interval time.Duration
@@ -196,8 +201,32 @@ func ReadCsv(data io.Reader, date time.Time, mapping map[string]string, ignorePi
 
 		}
 	}
+	return interval
+}
 
-	log.Info().Msgf("Max time interval: %s", interval)
+func findMeanTimeInterval(out []CarDataPoint) time.Duration {
+	var previous CarDataPoint
+	var current CarDataPoint
+	var interval time.Duration
+	var sum time.Duration
+	var count int
+	for _, point := range out {
+		if point.Pid == "Vehicle speed" {
+			if previous == (CarDataPoint{}) {
+				previous = point
+			} else {
+				current = point
+				if interval == 0 {
+					log.Debug().Msgf("First time interval between %s and %s:  %s", current.Time, previous.Time, current.Time.Sub(previous.Time).Abs())
+					interval = current.Time.Sub(previous.Time).Abs()
+				} else {
+					sum += current.Time.Sub(previous.Time).Abs()
+					count++
+				}
+				previous = current
+			}
 
-	return out, end
+		}
+	}
+	return sum / time.Duration(count)
 }

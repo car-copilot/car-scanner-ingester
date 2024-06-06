@@ -13,11 +13,15 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func ProcessCsv(reader io.Reader, date time.Time, vehicle Vehicle, mergedPids map[string]string, mergedIgnorePids []string, owner string, interval time.Duration) {
+func ProcessCsv(reader io.Reader, date time.Time, vehicle Vehicle, mergedPids map[string]string, mergedIgnorePids []string, owner string) {
 	raw_points, endDate := ReadCsv(reader, date, mergedPids, mergedIgnorePids, vehicle.Convert)
 
 	log.Info().Msgf("Registering trip in database")
 	bucket := registerTrip(vehicle, owner, date, endDate)
+
+	interval := findMeanTimeInterval(raw_points)
+
+	log.Info().Msgf("interval: %s", interval)
 
 	points := GroupDataPoint(raw_points, interval)
 	influxPoints := []*write.Point{}
@@ -81,5 +85,5 @@ func ProcessFile(file fs.DirEntry, vehicle Vehicle, mergedPids map[string]string
 	if err != nil {
 		log.Fatal().Err(err)
 	}
-	ProcessCsv(reader, date, vehicle, mergedPids, mergedIgnorePids, owner, interval)
+	ProcessCsv(reader, date, vehicle, mergedPids, mergedIgnorePids, owner)
 }
