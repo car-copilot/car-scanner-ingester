@@ -1,0 +1,37 @@
+deployementType: Deployment
+# runtimeClassName: nvidia
+
+# tpl
+envMap:
+  # CSI_INFLUXDB_URL: http://influxdb.example.com:8086
+  # CSI_INFLUXDB_TOKEN: my-token
+  # CSI_INFLUXDB_ORG: my-org
+  # CSI_PG_CONNECTION: host=<host> user=car-copilot dbname=car-copilot sslmode=disable password=<password>
+
+replicas: 1
+
+containers:
+  main:
+    enabled: true
+
+    image:
+      repository: ghcr.io/car-copilot/car-scanner-ingester
+      tag: main
+
+    args:
+      - -serve=true
+      - -dry-run=true
+
+    ports:
+      - name: http
+        containerPort: 8080
+        protocol: TCP
+
+service:
+  main:
+    enabled: true
+    ports:
+      - name: http
+        port: 80
+        targetPort: http
+        protocol: TCP
