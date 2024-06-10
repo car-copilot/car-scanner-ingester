@@ -57,7 +57,7 @@ func ProcessCsv(reader io.Reader, date time.Time, vehicle Vehicle, mergedPids ma
 			}
 
 			log.Info().Msgf("Deleting data from %s to %s for bucket %s in org %s", date, endDate, bucketObj.Name, orgObj.Name)
-			deleteAPI.Delete(context.Background(), orgObj, bucketObj, date, endDate, "_measurement=\"*\"")
+			deleteAPI.Delete(context.Background(), orgObj, bucketObj, date, endDate, "")
 			writeAPI := influxClient.WriteAPIBlocking(Config.Influx.Org, bucket)
 			log.Info().Msgf("Writing %d points to InfluxDB", len(points))
 			log.Info().Msgf("Data available at https://car-grafana.obito.fr/d/edmyb3fp6zocge/car-scanner?orgId=1&var-car=%s&from=%d&to=%d&refresh=10s", bucket, date.UnixMilli(), endDate.UnixMilli())

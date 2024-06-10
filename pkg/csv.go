@@ -63,17 +63,18 @@ func recordToCarDatapoint(record []string, start_time time.Time, offset *float64
 	if err != nil {
 		panic(err)
 	}
+	var latitute, longitude float64
+	if len(record) > 4 {
+		latitute, err = strconv.ParseFloat(record[4], 64)
+		if err != nil {
+			latitute = 0.0
+		}
 
-	latitute, err := strconv.ParseFloat(record[4], 64)
-	if err != nil {
-		latitute = 0.0
+		longitude, err = strconv.ParseFloat(record[5], 64)
+		if err != nil {
+			longitude = 0.0
+		}
 	}
-
-	longitude, err := strconv.ParseFloat(record[5], 64)
-	if err != nil {
-		longitude = 0.0
-	}
-
 	seconds, err := strconv.ParseFloat(record[0], 64)
 	if err != nil {
 		panic(err)

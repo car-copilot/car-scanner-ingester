@@ -89,6 +89,8 @@ func InitWithConfigFile(path string) {
 	if err := K.Unmarshal("vehicles", &Config.Vehicles); err != nil {
 		log.Fatal().Err(err)
 	}
+
+	MergeVehicleConfigs()
 }
 
 func Init() {
@@ -156,11 +158,13 @@ func MergeMaps(m1 map[string]string, m2 map[string]string) map[string]string {
 }
 
 func MergeVehicleConfigs() {
-	for _, vehicle := range Config.Vehicles {
+	for i, vehicle := range Config.Vehicles {
 		mergedPids := MergeMaps(K.MustStringMap("pidMap"), vehicle.PidMap)
 		mergedIgnorePids := MergeSlicesUnique(K.MustStrings("ignorePids"), vehicle.IgnorePids)
 
 		vehicle.PidMap = mergedPids
 		vehicle.IgnorePids = mergedIgnorePids
+		Config.Vehicles[i] = vehicle
 	}
+	log.Info().Msgf("Merged: %v", Config.Vehicles)
 }
